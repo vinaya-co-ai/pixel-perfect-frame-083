@@ -15,10 +15,10 @@ export function FieldShell({
   children,
 }: {
   label: string;
-  required?: boolean;
-  hint?: string;
-  error?: string | null;
-  counter?: string;
+  required?: boolean | undefined;
+  hint?: string | undefined;
+  error?: string | null | undefined;
+  counter?: string | undefined;
   children: ReactNode;
 }) {
   return (
