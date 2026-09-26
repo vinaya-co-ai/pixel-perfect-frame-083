@@ -77,7 +77,7 @@ function Builder() {
       </header>
 
       <div className="flex min-h-0 flex-1">
-        <aside className="w-[440px] shrink-0 overflow-y-auto border-r bg-card">
+        <aside className="w-[440px] shrink-0 overflow-y-auto border-r bg-card p-4">
           <EditorPanel data={data} update={update} websiteType={type} />
         </aside>
         <main className="flex min-w-0 flex-1 flex-col">
