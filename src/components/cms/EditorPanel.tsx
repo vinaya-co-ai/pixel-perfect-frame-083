@@ -32,6 +32,7 @@ import {
   SECTIONS,
   uid,
   urlError,
+  ValidationError,
   type DownloadCategory,
   type WebsiteData,
   type WebsiteType,
@@ -41,6 +42,10 @@ type Props = {
   data: WebsiteData;
   update: (fn: (draft: WebsiteData) => WebsiteData) => void;
   websiteType: WebsiteType;
+  openSections: string[];
+  setOpenSections: React.Dispatch<React.SetStateAction<string[]>>;
+  errors: ValidationError[];
+  onSelectSection?: (sectionId: string) => void;
 };
 
 function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
@@ -56,25 +61,39 @@ function AddButton({ label, onClick }: { label: string; onClick: () => void }) {
   );
 }
 
-export function EditorPanel({ data, update, websiteType }: Props) {
+export function EditorPanel({
+  data,
+  update,
+  websiteType,
+  openSections,
+  setOpenSections,
+  errors,
+  onSelectSection,
+}: Props) {
   const sections = SECTIONS[websiteType];
   const entityLabel = websiteType === "sub-academy" ? "Academy" : "District";
 
   const set = <K extends keyof WebsiteData>(key: K, value: WebsiteData[K]) =>
     update((d) => ({ ...d, [key]: value }));
 
+  const sectionErrorsCount = (sectionId: string) =>
+    errors.filter((e) => e.sectionId === sectionId).length;
+
   const panels: Record<string, React.ReactNode> = {
     basic: (
       <div className="space-y-4">
         <ImageField
+          id="field-navbar-logoUrl"
           label="Logo"
           required
           aspect="aspect-square"
           hint="PNG or JPEG · 1:1 ratio recommended"
           value={data.navbar.logoUrl}
           onChange={(v) => set("navbar", { ...data.navbar, logoUrl: v })}
+          error={data.navbar.logoUrl ? null : "Logo is required"}
         />
         <TextField
+          id="field-navbar-shortName"
           label="Short Name"
           required
           max={10}
@@ -89,6 +108,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
     hero: (
       <div className="space-y-4">
         <TextField
+          id="field-hero-title"
           label="Title"
           required
           max={10}
@@ -97,6 +117,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
           error={lengthError(data.hero.title, { required: true, max: 10 })}
         />
         <TextField
+          id="field-hero-subtitle"
           label="Subtitle"
           required
           min={15}
@@ -110,6 +131,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
           })}
         />
         <FieldShell
+          id="field-hero-images"
           label="Hero Images"
           required
           error={
@@ -140,6 +162,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
     about: (
       <div className="space-y-4">
         <TextField
+          id="field-about-title"
           label="Title"
           required
           max={10}
@@ -148,6 +171,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
           error={lengthError(data.about.title, { required: true, max: 10 })}
         />
         <TextField
+          id="field-about-description"
           label="Description"
           required
           multiline
@@ -163,6 +187,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
           })}
         />
         <ImageField
+          id="field-about-image"
           label="Image"
           required
           value={data.about.image}
@@ -174,6 +199,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
     explore: (
       <div className="space-y-4">
         <TextField
+          id="field-explore-title"
           label="Title"
           required
           max={10}
@@ -182,6 +208,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
           error={lengthError(data.explore.title, { required: true, max: 10 })}
         />
         <TextField
+          id="field-explore-subtitle"
           label="Subtitle"
           required
           min={15}
@@ -237,6 +264,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
               return (
                 <>
                   <ImageField
+                    id={`field-explore-${item.id}-logoUrl`}
                     label="Logo"
                     compact
                     aspect="aspect-square"
@@ -244,6 +272,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                     onChange={(v) => patch({ logoUrl: v })}
                   />
                   <TextField
+                    id={`field-explore-${item.id}-name`}
                     label="Name"
                     required
                     max={15}
@@ -252,6 +281,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                     error={lengthError(item.name, { required: true, max: 15 })}
                   />
                   <TextField
+                    id={`field-explore-${item.id}-description`}
                     label="Description"
                     required
                     min={30}
@@ -265,6 +295,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                     })}
                   />
                   <TextField
+                    id={`field-explore-${item.id}-websiteUrl`}
                     label="Website URL"
                     value={item.websiteUrl}
                     onChange={(v) => patch({ websiteUrl: v })}
@@ -324,12 +355,15 @@ export function EditorPanel({ data, update, websiteType }: Props) {
               }
             >
               <ImageField
+                id={`field-gallery-${item.id}-image`}
                 label="Image"
                 compact
                 value={item.image}
                 onChange={(v) => patch({ image: v })}
+                error={item.image ? null : "An image is required"}
               />
               <TextField
+                id={`field-gallery-${item.id}-title`}
                 label="Title"
                 max={10}
                 value={item.title}
@@ -337,12 +371,13 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                 error={lengthError(item.title, { max: 10 })}
               />
               <TextField
+                id={`field-gallery-${item.id}-description`}
                 label="Description"
                 min={20}
                 max={30}
                 value={item.description}
                 onChange={(v) => patch({ description: v })}
-                error={lengthError(item.description, { min: 20, max: 30 })}
+                error={item.description ? lengthError(item.description, { min: 20, max: 30 }) : null}
               />
             </ItemCard>
           );
@@ -383,12 +418,15 @@ export function EditorPanel({ data, update, websiteType }: Props) {
               }
             >
               <ImageField
+                id={`field-facilities-${item.id}-image`}
                 label="Image"
                 compact
                 value={item.image}
                 onChange={(v) => patch({ image: v })}
+                error={item.image ? null : "An image is required"}
               />
               <TextField
+                id={`field-facilities-${item.id}-title`}
                 label="Title"
                 required
                 min={10}
@@ -448,6 +486,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
               }
             >
               <TextField
+                id={`field-events-${item.id}-title`}
                 label="Event Title"
                 required
                 max={15}
@@ -456,6 +495,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                 error={lengthError(item.title, { required: true, max: 15 })}
               />
               <TextField
+                id={`field-events-${item.id}-description`}
                 label="Description"
                 required
                 max={20}
@@ -467,6 +507,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                 })}
               />
               <TextField
+                id={`field-events-${item.id}-location`}
                 label="Location"
                 required
                 value={item.location}
@@ -474,6 +515,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                 error={lengthError(item.location, { required: true })}
               />
               <TextField
+                id={`field-events-${item.id}-locationUrl`}
                 label="Location URL"
                 value={item.locationUrl}
                 onChange={(v) => patch({ locationUrl: v })}
@@ -482,22 +524,25 @@ export function EditorPanel({ data, update, websiteType }: Props) {
               />
               <div className="grid grid-cols-3 gap-2">
                 <TextField
+                  id={`field-events-${item.id}-date`}
                   label="Date"
                   required
                   type="date"
                   value={item.date}
                   onChange={(v) => patch({ date: v })}
-                  error={item.date ? null : "Required"}
+                  error={item.date ? null : "Date is required"}
                 />
                 <TextField
+                  id={`field-events-${item.id}-startTime`}
                   label="Start"
                   required
                   type="time"
                   value={item.startTime}
                   onChange={(v) => patch({ startTime: v })}
-                  error={item.startTime ? null : "Required"}
+                  error={item.startTime ? null : "Start time is required"}
                 />
                 <TextField
+                  id={`field-events-${item.id}-endTime`}
                   label="End"
                   type="time"
                   value={item.endTime}
@@ -561,6 +606,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
               }
             >
               <TextField
+                id={`field-downloads-${item.id}-title`}
                 label="Title"
                 required
                 value={item.title}
@@ -568,6 +614,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                 error={lengthError(item.title, { required: true })}
               />
               <TextField
+                id={`field-downloads-${item.id}-description`}
                 label="Description"
                 value={item.description}
                 onChange={(v) => patch({ description: v })}
@@ -590,6 +637,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                 </Select>
               </FieldShell>
               <PdfField
+                id={`field-downloads-${item.id}-fileName`}
                 fileName={item.fileName}
                 fileSize={item.fileSize}
                 onChange={(fileName, fileSize) => patch({ fileName, fileSize })}
@@ -653,6 +701,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
               }
             >
               <TextField
+                id={`field-experiences-${item.id}-name`}
                 label="Player Name"
                 required
                 min={10}
@@ -666,6 +715,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                 })}
               />
               <ImageField
+                id={`field-experiences-${item.id}-image`}
                 label="Player Image"
                 compact
                 aspect="aspect-square"
@@ -673,6 +723,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
                 onChange={(v) => patch({ image: v })}
               />
               <TextField
+                id={`field-experiences-${item.id}-experience`}
                 label="Experience"
                 required
                 multiline
@@ -735,12 +786,14 @@ export function EditorPanel({ data, update, websiteType }: Props) {
     location: (
       <div className="space-y-4">
         <ImageField
+          id="field-location-mapImage"
           label="Map Image"
           hint="Optional static map snapshot"
           value={data.location.mapImage}
           onChange={(v) => set("location", { ...data.location, mapImage: v })}
         />
         <TextField
+          id="field-location-mapUrl"
           label="Map URL"
           value={data.location.mapUrl}
           onChange={(v) => set("location", { ...data.location, mapUrl: v })}
@@ -748,6 +801,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
           hint="Optional Google Maps link"
         />
         <TextField
+          id="field-location-address"
           label="Address"
           required
           multiline
@@ -760,6 +814,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
           })}
         />
         <TextField
+          id="field-location-contactNumber"
           label="Contact Number"
           required
           value={data.location.contactNumber}
@@ -819,6 +874,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
       <div className="space-y-4">
         <SectionNote>Footer logo automatically uses the Navbar logo.</SectionNote>
         <TextField
+          id="field-footer-address"
           label="Address"
           required
           multiline
@@ -828,6 +884,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
           error={lengthError(data.footer.address, { required: true, max: 100 })}
         />
         <TextField
+          id="field-footer-contactNumber"
           label="Contact Number"
           required
           value={data.footer.contactNumber}
@@ -844,6 +901,7 @@ export function EditorPanel({ data, update, websiteType }: Props) {
         ).map(([key, label]) => (
           <TextField
             key={key}
+            id={`field-footer-${key}`}
             label={label}
             value={data.footer[key]}
             onChange={(v) => set("footer", { ...data.footer, [key]: v })}
@@ -867,30 +925,49 @@ export function EditorPanel({ data, update, websiteType }: Props) {
       </div>
       <Accordion
         type="multiple"
-        defaultValue={["basic", "hero"]}
+        value={openSections}
+        onValueChange={(val) => {
+          setOpenSections(val);
+          const newlyOpened = val.find((v) => !openSections.includes(v));
+          if (newlyOpened) {
+            onSelectSection?.(newlyOpened);
+          }
+        }}
         className="space-y-2.5"
       >
-        {sections.map((section, i) => (
-          <AccordionItem
-            key={section.id}
-            value={section.id}
-            className="overflow-hidden rounded-xl border border-border bg-surface px-0 shadow-sm last:border-b"
-          >
-            <AccordionTrigger className="px-3 py-3 hover:no-underline">
-              <span className="flex items-center gap-2.5 text-left">
-                <span className="grid size-6 shrink-0 place-items-center rounded-md bg-brand-soft text-[11px] font-bold text-brand">
-                  {i + 1}
+        {sections.map((section, i) => {
+          const errCount = sectionErrorsCount(section.id);
+          return (
+            <AccordionItem
+              key={section.id}
+              value={section.id}
+              id={`accordion-item-${section.id}`}
+              className="overflow-hidden rounded-xl border border-border bg-surface px-0 shadow-sm last:border-b"
+            >
+              <AccordionTrigger
+                className="px-3 py-3 hover:no-underline cursor-pointer"
+                onClick={() => onSelectSection?.(section.id)}
+              >
+                <span className="flex items-center gap-2.5 text-left flex-1 min-w-0">
+                  <span className="grid size-6 shrink-0 place-items-center rounded-md bg-brand-soft text-[11px] font-bold text-brand">
+                    {i + 1}
+                  </span>
+                  <span className="text-[13.5px] font-semibold truncate">
+                    {section.label}
+                  </span>
+                  {errCount > 0 && (
+                    <span className="ml-auto mr-2 rounded-full bg-destructive/15 px-2 py-0.5 text-[10.5px] font-semibold text-destructive">
+                      {errCount} {errCount === 1 ? "error" : "errors"}
+                    </span>
+                  )}
                 </span>
-                <span className="text-[13.5px] font-semibold">
-                  {section.label}
-                </span>
-              </span>
-            </AccordionTrigger>
-            <AccordionContent className="border-t border-border bg-background/60 px-3 pt-3 pb-4">
-              {panels[section.id]}
-            </AccordionContent>
-          </AccordionItem>
-        ))}
+              </AccordionTrigger>
+              <AccordionContent className="border-t border-border bg-background/60 px-3 pt-3 pb-4">
+                {panels[section.id]}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
       </Accordion>
       <Label className="sr-only">Editor end</Label>
     </div>

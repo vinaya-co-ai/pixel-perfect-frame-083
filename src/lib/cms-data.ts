@@ -91,7 +91,7 @@ export type WebsiteData = {
 export const uid = () => Math.random().toString(36).slice(2, 10);
 
 export const initialData: WebsiteData = {
-  navbar: { logoUrl: "", shortName: "KSA" },
+  navbar: { logoUrl: hero1, shortName: "KSA" },
   hero: {
     title: "Kerala SA",
     subtitle: "Train. Compete. Excel",
@@ -130,13 +130,13 @@ export const initialData: WebsiteData = {
       id: uid(),
       image: hero1,
       title: "Range Day",
-      description: "Juniors at the 10m air rifle range",
+      description: "Juniors at the 10m air rifle",
     },
     {
       id: uid(),
       image: hero2,
       title: "Field Camp",
-      description: "Morning conditioning on the field",
+      description: "Morning fitness on the field",
     },
     {
       id: uid(),
@@ -154,7 +154,7 @@ export const initialData: WebsiteData = {
     {
       id: uid(),
       title: "State Trials",
-      description: "Open selection rounds",
+      description: "Open selection round",
       location: "Central Range, Kochi",
       locationUrl: "https://maps.google.com",
       date: "2026-10-12",
@@ -165,7 +165,7 @@ export const initialData: WebsiteData = {
     {
       id: uid(),
       title: "Junior Camp",
-      description: "Two week coaching camp",
+      description: "Two week coaching",
       location: "Academy Campus",
       locationUrl: "",
       date: "2026-11-02",
@@ -226,10 +226,10 @@ export const initialData: WebsiteData = {
 /* ---------- validation helpers ---------- */
 
 export function lengthError(
-  value: string,
+  value: string | undefined | null,
   opts: { required?: boolean; min?: number; max?: number; label?: string },
 ): string | null {
-  const v = value.trim();
+  const v = (value || "").trim();
   if (opts.required && !v) return "This field is required";
   if (!v) return null;
   if (opts.min && opts.max && (v.length < opts.min || v.length > opts.max))
@@ -240,8 +240,8 @@ export function lengthError(
   return null;
 }
 
-export function urlError(value: string, required = false): string | null {
-  const v = value.trim();
+export function urlError(value: string | undefined | null, required = false): string | null {
+  const v = (value || "").trim();
   if (!v) return required ? "This field is required" : null;
   try {
     const u = new URL(v);
@@ -253,8 +253,8 @@ export function urlError(value: string, required = false): string | null {
   }
 }
 
-export function phoneError(value: string, required = true): string | null {
-  const v = value.trim();
+export function phoneError(value: string | undefined | null, required = true): string | null {
+  const v = (value || "").trim();
   if (!v) return required ? "This field is required" : null;
   return /^\d{10}$/.test(v) ? null : "Enter a valid 10-digit number";
 }
@@ -307,3 +307,433 @@ export const SECTIONS: Record<WebsiteType, { id: string; label: string }[]> = {
     { id: "footer", label: "Footer" },
   ],
 };
+
+export type ValidationError = {
+  key: string;
+  sectionId: string;
+  sectionLabel: string;
+  fieldLabel: string;
+  message: string;
+  elementId: string;
+};
+
+export function validateWebsite(
+  data: WebsiteData,
+  websiteType: WebsiteType,
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const isAcademy = websiteType === "sub-academy";
+
+  // 1. BASIC INFORMATION
+  if (!data.navbar?.logoUrl?.trim()) {
+    errors.push({
+      key: "navbar.logoUrl",
+      sectionId: "basic",
+      sectionLabel: "Basic Information",
+      fieldLabel: "Logo",
+      message: "Logo is required",
+      elementId: "field-navbar-logoUrl",
+    });
+  }
+  const shortNameErr = lengthError(data.navbar?.shortName, { required: true, max: 10 });
+  if (shortNameErr) {
+    errors.push({
+      key: "navbar.shortName",
+      sectionId: "basic",
+      sectionLabel: "Basic Information",
+      fieldLabel: "Short Name",
+      message: shortNameErr,
+      elementId: "field-navbar-shortName",
+    });
+  }
+
+  // 2. HERO
+  const heroTitleErr = lengthError(data.hero?.title, { required: true, max: 10 });
+  if (heroTitleErr) {
+    errors.push({
+      key: "hero.title",
+      sectionId: "hero",
+      sectionLabel: "Hero",
+      fieldLabel: "Hero Title",
+      message: heroTitleErr,
+      elementId: "field-hero-title",
+    });
+  }
+  const heroSubtitleErr = lengthError(data.hero?.subtitle, { required: true, min: 15, max: 20 });
+  if (heroSubtitleErr) {
+    errors.push({
+      key: "hero.subtitle",
+      sectionId: "hero",
+      sectionLabel: "Hero",
+      fieldLabel: "Hero Subtitle",
+      message: heroSubtitleErr,
+      elementId: "field-hero-subtitle",
+    });
+  }
+  const heroImgCount = (data.hero?.images || []).filter(Boolean).length;
+  if (heroImgCount !== 4) {
+    errors.push({
+      key: "hero.images",
+      sectionId: "hero",
+      sectionLabel: "Hero",
+      fieldLabel: "Hero Images",
+      message: "Exactly 4 images are required",
+      elementId: "field-hero-images",
+    });
+  }
+
+  // 3. ABOUT
+  const aboutTitleErr = lengthError(data.about?.title, { required: true, max: 10 });
+  if (aboutTitleErr) {
+    errors.push({
+      key: "about.title",
+      sectionId: "about",
+      sectionLabel: "About",
+      fieldLabel: "About Title",
+      message: aboutTitleErr,
+      elementId: "field-about-title",
+    });
+  }
+  const aboutDescErr = lengthError(data.about?.description, { required: true, min: 50, max: 100 });
+  if (aboutDescErr) {
+    errors.push({
+      key: "about.description",
+      sectionId: "about",
+      sectionLabel: "About",
+      fieldLabel: "About Description",
+      message: aboutDescErr,
+      elementId: "field-about-description",
+    });
+  }
+  if (!data.about?.image?.trim()) {
+    errors.push({
+      key: "about.image",
+      sectionId: "about",
+      sectionLabel: "About",
+      fieldLabel: "About Image",
+      message: "An image is required",
+      elementId: "field-about-image",
+    });
+  }
+
+  // 4. EXPLORE (State/District only)
+  if (!isAcademy && data.explore) {
+    const expTitleErr = lengthError(data.explore.title, { required: true, max: 10 });
+    if (expTitleErr) {
+      errors.push({
+        key: "explore.title",
+        sectionId: "explore",
+        sectionLabel: "Explore Districts / Academies",
+        fieldLabel: "Section Title",
+        message: expTitleErr,
+        elementId: "field-explore-title",
+      });
+    }
+    const expSubErr = lengthError(data.explore.subtitle, { required: true, min: 15, max: 20 });
+    if (expSubErr) {
+      errors.push({
+        key: "explore.subtitle",
+        sectionId: "explore",
+        sectionLabel: "Explore Districts / Academies",
+        fieldLabel: "Section Subtitle",
+        message: expSubErr,
+        elementId: "field-explore-subtitle",
+      });
+    }
+    (data.explore.items || []).forEach((item, idx) => {
+      const nameErr = lengthError(item.name, { required: true, max: 15 });
+      if (nameErr) {
+        errors.push({
+          key: `explore.items.${item.id}.name`,
+          sectionId: "explore",
+          sectionLabel: "Explore Districts / Academies",
+          fieldLabel: `Card #${idx + 1} Name`,
+          message: nameErr,
+          elementId: `field-explore-${item.id}-name`,
+        });
+      }
+      const descErr = lengthError(item.description, { required: true, min: 30, max: 40 });
+      if (descErr) {
+        errors.push({
+          key: `explore.items.${item.id}.description`,
+          sectionId: "explore",
+          sectionLabel: "Explore Districts / Academies",
+          fieldLabel: `Card #${idx + 1} Description`,
+          message: descErr,
+          elementId: `field-explore-${item.id}-description`,
+        });
+      }
+      const urlErr = urlError(item.websiteUrl);
+      if (urlErr) {
+        errors.push({
+          key: `explore.items.${item.id}.websiteUrl`,
+          sectionId: "explore",
+          sectionLabel: "Explore Districts / Academies",
+          fieldLabel: `Card #${idx + 1} Website URL`,
+          message: urlErr,
+          elementId: `field-explore-${item.id}-websiteUrl`,
+        });
+      }
+    });
+  }
+
+  // 5. GALLERY
+  (data.gallery || []).forEach((item, idx) => {
+    if (!item.image?.trim()) {
+      errors.push({
+        key: `gallery.${item.id}.image`,
+        sectionId: "gallery",
+        sectionLabel: "Gallery",
+        fieldLabel: `Gallery #${idx + 1} Image`,
+        message: "An image is required",
+        elementId: `field-gallery-${item.id}-image`,
+      });
+    }
+    const titleErr = lengthError(item.title, { max: 10 });
+    if (titleErr) {
+      errors.push({
+        key: `gallery.${item.id}.title`,
+        sectionId: "gallery",
+        sectionLabel: "Gallery",
+        fieldLabel: `Gallery #${idx + 1} Title`,
+        message: titleErr,
+        elementId: `field-gallery-${item.id}-title`,
+      });
+    }
+    if (item.description) {
+      const descErr = lengthError(item.description, { min: 20, max: 30 });
+      if (descErr) {
+        errors.push({
+          key: `gallery.${item.id}.description`,
+          sectionId: "gallery",
+          sectionLabel: "Gallery",
+          fieldLabel: `Gallery #${idx + 1} Description`,
+          message: descErr,
+          elementId: `field-gallery-${item.id}-description`,
+        });
+      }
+    }
+  });
+
+  // 6. FACILITIES (Sub-Academy only)
+  if (isAcademy && data.facilities) {
+    data.facilities.forEach((item, idx) => {
+      if (!item.image?.trim()) {
+        errors.push({
+          key: `facilities.${item.id}.image`,
+          sectionId: "facilities",
+          sectionLabel: "Facilities",
+          fieldLabel: `Facility #${idx + 1} Image`,
+          message: "An image is required",
+          elementId: `field-facilities-${item.id}-image`,
+        });
+      }
+      const titleErr = lengthError(item.title, { required: true, min: 10, max: 15 });
+      if (titleErr) {
+        errors.push({
+          key: `facilities.${item.id}.title`,
+          sectionId: "facilities",
+          sectionLabel: "Facilities",
+          fieldLabel: `Facility #${idx + 1} Title`,
+          message: titleErr,
+          elementId: `field-facilities-${item.id}-title`,
+        });
+      }
+    });
+  }
+
+  // 7. EVENTS
+  (data.events || []).forEach((item, idx) => {
+    const titleErr = lengthError(item.title, { required: true, max: 15 });
+    if (titleErr) {
+      errors.push({
+        key: `events.${item.id}.title`,
+        sectionId: "events",
+        sectionLabel: "Events",
+        fieldLabel: `Event #${idx + 1} Title`,
+        message: titleErr,
+        elementId: `field-events-${item.id}-title`,
+      });
+    }
+    const descErr = lengthError(item.description, { required: true, max: 20 });
+    if (descErr) {
+      errors.push({
+        key: `events.${item.id}.description`,
+        sectionId: "events",
+        sectionLabel: "Events",
+        fieldLabel: `Event #${idx + 1} Description`,
+        message: descErr,
+        elementId: `field-events-${item.id}-description`,
+      });
+    }
+    const locErr = lengthError(item.location, { required: true });
+    if (locErr) {
+      errors.push({
+        key: `events.${item.id}.location`,
+        sectionId: "events",
+        sectionLabel: "Events",
+        fieldLabel: `Event #${idx + 1} Location`,
+        message: locErr,
+        elementId: `field-events-${item.id}-location`,
+      });
+    }
+    const urlErr = urlError(item.locationUrl);
+    if (urlErr) {
+      errors.push({
+        key: `events.${item.id}.locationUrl`,
+        sectionId: "events",
+        sectionLabel: "Events",
+        fieldLabel: `Event #${idx + 1} Location URL`,
+        message: urlErr,
+        elementId: `field-events-${item.id}-locationUrl`,
+      });
+    }
+    if (!item.date?.trim()) {
+      errors.push({
+        key: `events.${item.id}.date`,
+        sectionId: "events",
+        sectionLabel: "Events",
+        fieldLabel: `Event #${idx + 1} Date`,
+        message: "Date is required",
+        elementId: `field-events-${item.id}-date`,
+      });
+    }
+    if (!item.startTime?.trim()) {
+      errors.push({
+        key: `events.${item.id}.startTime`,
+        sectionId: "events",
+        sectionLabel: "Events",
+        fieldLabel: `Event #${idx + 1} Start Time`,
+        message: "Start time is required",
+        elementId: `field-events-${item.id}-startTime`,
+      });
+    }
+  });
+
+  // 8. DOWNLOADS
+  (data.downloads || []).forEach((item, idx) => {
+    const titleErr = lengthError(item.title, { required: true });
+    if (titleErr) {
+      errors.push({
+        key: `downloads.${item.id}.title`,
+        sectionId: "downloads",
+        sectionLabel: "Downloads",
+        fieldLabel: `Download #${idx + 1} Title`,
+        message: titleErr,
+        elementId: `field-downloads-${item.id}-title`,
+      });
+    }
+    if (!item.fileName?.trim()) {
+      errors.push({
+        key: `downloads.${item.id}.fileName`,
+        sectionId: "downloads",
+        sectionLabel: "Downloads",
+        fieldLabel: `Download #${idx + 1} PDF File`,
+        message: "A PDF file is required",
+        elementId: `field-downloads-${item.id}-fileName`,
+      });
+    }
+  });
+
+  // 9. EXPERIENCES (Sub-Academy only)
+  if (isAcademy && data.experiences) {
+    data.experiences.forEach((item, idx) => {
+      const nameErr = lengthError(item.name, { required: true, min: 10, max: 15 });
+      if (nameErr) {
+        errors.push({
+          key: `experiences.${item.id}.name`,
+          sectionId: "experiences",
+          sectionLabel: "Players' Experience",
+          fieldLabel: `Experience #${idx + 1} Player Name`,
+          message: nameErr,
+          elementId: `field-experiences-${item.id}-name`,
+        });
+      }
+      const expErr = lengthError(item.experience, { required: true });
+      if (expErr) {
+        errors.push({
+          key: `experiences.${item.id}.experience`,
+          sectionId: "experiences",
+          sectionLabel: "Players' Experience",
+          fieldLabel: `Experience #${idx + 1} Description`,
+          message: expErr,
+          elementId: `field-experiences-${item.id}-experience`,
+        });
+      }
+    });
+  }
+
+  // 10. LOCATION
+  const mapUrlErr = urlError(data.location?.mapUrl);
+  if (mapUrlErr) {
+    errors.push({
+      key: "location.mapUrl",
+      sectionId: "location",
+      sectionLabel: "Location",
+      fieldLabel: "Map URL",
+      message: mapUrlErr,
+      elementId: "field-location-mapUrl",
+    });
+  }
+  const locAddrErr = lengthError(data.location?.address, { required: true, max: 100 });
+  if (locAddrErr) {
+    errors.push({
+      key: "location.address",
+      sectionId: "location",
+      sectionLabel: "Location",
+      fieldLabel: "Address",
+      message: locAddrErr,
+      elementId: "field-location-address",
+    });
+  }
+  const locPhoneErr = phoneError(data.location?.contactNumber);
+  if (locPhoneErr) {
+    errors.push({
+      key: "location.contactNumber",
+      sectionId: "location",
+      sectionLabel: "Location",
+      fieldLabel: "Contact Number",
+      message: locPhoneErr,
+      elementId: "field-location-contactNumber",
+    });
+  }
+
+  // 11. FOOTER
+  const footAddrErr = lengthError(data.footer?.address, { required: true, max: 100 });
+  if (footAddrErr) {
+    errors.push({
+      key: "footer.address",
+      sectionId: "footer",
+      sectionLabel: "Footer",
+      fieldLabel: "Address",
+      message: footAddrErr,
+      elementId: "field-footer-address",
+    });
+  }
+  const footPhoneErr = phoneError(data.footer?.contactNumber);
+  if (footPhoneErr) {
+    errors.push({
+      key: "footer.contactNumber",
+      sectionId: "footer",
+      sectionLabel: "Footer",
+      fieldLabel: "Contact Number",
+      message: footPhoneErr,
+      elementId: "field-footer-contactNumber",
+    });
+  }
+  (["youtubeUrl", "facebookUrl", "instagramUrl", "twitterUrl"] as const).forEach((fKey) => {
+    const err = urlError(data.footer?.[fKey]);
+    if (err) {
+      errors.push({
+        key: `footer.${fKey}`,
+        sectionId: "footer",
+        sectionLabel: "Footer",
+        fieldLabel: fKey.replace("Url", " URL"),
+        message: err,
+        elementId: `field-footer-${fKey}`,
+      });
+    }
+  });
+
+  return errors;
+}

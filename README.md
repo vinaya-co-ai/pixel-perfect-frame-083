@@ -1,24 +1,44 @@
-# KSRA Prototype
+# KSRA Academy Website Builder
 
-Implement exactly the screenshot and nothing else
+An administrative Content Management System (CMS) and real-time live website builder for Kerala State Rifle Association (KSRA) academies, state, and district bodies.
 
-This project was built with [Lovable](https://lovable.dev).
+## Features
 
-## Build with Lovable
+- **Multi-Type Support**: Seamlessly toggle and manage content structures for Sub-Academy, State, and District websites.
+- **Dual-Pane Experience**: Side-by-side content editor and live interactive website preview with multi-device frames (Desktop, Tablet, Mobile).
+- **Strict Validation Engine**: Real-time inline field validation, character counters, format checkers (10-digit phone, valid URLs, image requirements), and robust Publish blockers across all sections.
+- **Auto-Navigation on Error**: Automatically expands the invalid section, highlights errors, and smoothly scrolls/focuses directly on the field requiring correction.
+- **Draft & Publish Workflows**: Local state management with Save Draft and Publish capabilities.
 
-Continue developing this project in the [Lovable editor](https://lovable.dev/projects/2b852457-5b79-4c24-bf9d-552d4d26e067).
+## Getting Started
 
-- **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: every change made in Lovable is committed straight to this repository.
-- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
+### Prerequisites
 
-## Development
+- Node.js (v18+)
+- npm, yarn, or bun
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+### Installation
 
 ```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
+npm install
+```
+
+### Development Server
+
+Start the local development server:
+
+```sh
 npm run dev
 ```
+
+### Production Build
+
+```sh
+npm run build
+```
+
+## Technology Stack
+
+- **Framework**: React 19, TanStack Start & TanStack Router
+- **State & Data**: TanStack Query, React Hook Form, Zod
+- **Styling & UI**: Tailwind CSS, Radix UI primitives, Lucide Icons, Sonner Notifications

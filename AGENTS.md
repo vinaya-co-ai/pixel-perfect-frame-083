@@ -1,10 +1,10 @@
-<!-- LOVABLE:BEGIN -->
-> [!IMPORTANT]
-> This project is connected to [Lovable](https://lovable.dev). Avoid rewriting
-> published git history — force pushing, or rebasing/amending/squashing commits
-> that are already pushed — as it rewrites history on Lovable's side and the
-> user will likely lose their project history.
->
-> Commits you push to the connected branch sync back to Lovable and show up in
-> the editor, so keep the branch in a working state.
-<!-- LOVABLE:END -->
+# KSRA Website Builder — Engineering Guidelines
+
+## Overview
+This repository contains the KSRA Academy Website Builder prototype, featuring an administrative CMS editor and real-time live preview.
+
+## Key Principles
+- **Specification Fidelity**: Maintain strict alignment with the KSRA Content Specification.
+- **Validation**: Ensure all validation rules (character lengths, required fields, formats) are evaluated using the unified validation engine in `src/lib/cms-data.ts`.
+- **Live Preview**: Keep preview rendering synchronized with editor form state.
+- **Multi-Type Support**: Ensure Sub-Academy, State, and District website structures are properly isolated and handled conditionally.

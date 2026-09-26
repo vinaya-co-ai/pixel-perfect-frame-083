@@ -12,6 +12,7 @@ export function FieldShell({
   hint,
   error,
   counter,
+  id,
   children,
 }: {
   label: string;
@@ -19,10 +20,11 @@ export function FieldShell({
   hint?: string | undefined;
   error?: string | null | undefined;
   counter?: string | undefined;
+  id?: string | undefined;
   children: ReactNode;
 }) {
   return (
-    <div className="space-y-1.5">
+    <div id={id} className="space-y-1.5">
       <div className="flex items-baseline justify-between gap-3">
         <Label className="text-[13px] font-semibold text-foreground">
           {label}
@@ -64,6 +66,7 @@ type TextFieldProps = {
   type?: string;
   multiline?: boolean;
   rows?: number;
+  id?: string;
 };
 
 export function TextField({
@@ -79,10 +82,12 @@ export function TextField({
   type = "text",
   multiline,
   rows = 3,
+  id,
 }: TextFieldProps) {
   const counter = max ? `${value.length} / ${max}` : undefined;
   const invalid = Boolean(error);
   const shared = {
+    id,
     value,
     placeholder,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
@@ -118,6 +123,7 @@ export function ImageField({
   error,
   aspect = "aspect-video",
   compact,
+  id,
 }: {
   label?: string;
   value: string;
@@ -127,6 +133,7 @@ export function ImageField({
   error?: string | null;
   aspect?: string;
   compact?: boolean;
+  id?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -136,7 +143,7 @@ export function ImageField({
   };
 
   const body = (
-    <div className="space-y-2">
+    <div id={id} className="space-y-2">
       <input
         ref={inputRef}
         type="file"
@@ -200,7 +207,7 @@ export function ImageField({
 
   if (!label) return body;
   return (
-    <FieldShell label={label} required={required} hint={hint} error={error}>
+    <FieldShell label={label} required={required} hint={hint} error={error} id={id ? `${id}-container` : undefined}>
       {body}
     </FieldShell>
   );
@@ -211,11 +218,13 @@ export function PdfField({
   fileSize,
   onChange,
   error,
+  id,
 }: {
   fileName: string;
   fileSize: string;
   onChange: (name: string, size: string) => void;
   error?: string | null;
+  id?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const pick = (file?: File | null) => {
@@ -223,7 +232,7 @@ export function PdfField({
     onChange(file.name, `${(file.size / 1024).toFixed(0)} KB`);
   };
   return (
-    <FieldShell label="PDF File" required error={error}>
+    <FieldShell label="PDF File" required error={error} id={id ? `${id}-container` : undefined}>
       <input
         ref={inputRef}
         type="file"
@@ -232,7 +241,7 @@ export function PdfField({
         onChange={(e) => pick(e.target.files?.[0])}
       />
       {fileName ? (
-        <div className="flex items-center gap-2 rounded-lg border border-border bg-surface p-2">
+        <div id={id} className="flex items-center gap-2 rounded-lg border border-border bg-surface p-2">
           <div className="grid size-8 shrink-0 place-items-center rounded bg-brand-soft text-[10px] font-bold text-brand">
             PDF
           </div>
@@ -261,6 +270,7 @@ export function PdfField({
         </div>
       ) : (
         <button
+          id={id}
           type="button"
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => e.preventDefault()}
