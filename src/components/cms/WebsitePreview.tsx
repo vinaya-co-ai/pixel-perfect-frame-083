@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef, useLayoutEffect } from "react";
 import {
   Calendar,
   Clock,
@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Menu,
   X,
+  Navigation,
 } from "lucide-react";
 import type { WebsiteData, WebsiteType } from "@/lib/cms-data";
 
@@ -28,7 +29,7 @@ function H2({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function WebsitePreview({
+export const WebsitePreview = React.memo(function WebsitePreview({
   data,
   websiteType,
   device = "desktop",
@@ -36,13 +37,42 @@ export function WebsitePreview({
 }: Props) {
   const [slide, setSlide] = useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mapViewMode, setMapViewMode] = useState<"interactive" | "image">("interactive");
 
-  const images = data.hero.images.filter(Boolean);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const scrollPosRef = useRef<number>(0);
+  const isNavigatingRef = useRef<boolean>(false);
+
+  // Attach native scroll listener directly to the container to record user scroll position
   useEffect(() => {
-    if (images.length < 2) return;
-    const t = setInterval(() => setSlide((s) => (s + 1) % images.length), 4000);
+    const el = containerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (!isNavigatingRef.current) {
+        scrollPosRef.current = el.scrollTop;
+      }
+    };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
+  }, []);
+
+  // Guarantee that in-place updates to content maintain the exact scroll position
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (el && !isNavigatingRef.current && scrollPosRef.current > 0) {
+      if (Math.abs(el.scrollTop - scrollPosRef.current) > 1) {
+        el.scrollTop = scrollPosRef.current;
+      }
+    }
+  });
+
+  const heroImages = useMemo(() => (data.hero?.images || []).filter(Boolean), [data.hero?.images]);
+
+  useEffect(() => {
+    if (heroImages.length < 2) return;
+    const t = setInterval(() => setSlide((s) => (s + 1) % heroImages.length), 4000);
     return () => clearInterval(t);
-  }, [images.length]);
+  }, [heroImages.length]);
 
   const isAcademy = websiteType === "sub-academy";
   const isMobile = device === "mobile";
@@ -51,10 +81,12 @@ export function WebsitePreview({
   const grid3 = isMobile ? "grid-cols-1" : isTablet ? "grid-cols-2" : "grid-cols-3";
   const grid2 = isMobile ? "grid-cols-1" : "grid-cols-2";
 
-  const events = data.events.filter((e) => e.active);
-  const downloads = data.downloads.filter((d) => d.active);
-  const exp = data.experiences.filter((e) => e.active);
-  const explore = data.explore.items.filter((e) => e.active);
+  const events = useMemo(() => (data.events || []).filter((e) => e?.active), [data.events]);
+  const downloads = useMemo(() => (data.downloads || []).filter((d) => d?.active), [data.downloads]);
+  const exp = useMemo(() => (data.experiences || []).filter((e) => e?.active), [data.experiences]);
+  const explore = useMemo(() => (data.explore?.items || []).filter((e) => e?.active), [data.explore?.items]);
+  const gallery = useMemo(() => data.gallery || [], [data.gallery]);
+  const facilities = useMemo(() => data.facilities || [], [data.facilities]);
 
   const navLinks = useMemo(() => {
     const links: { id: string; label: string }[] = [
@@ -63,10 +95,10 @@ export function WebsitePreview({
     if (!isAcademy && explore.length > 0) {
       links.push({ id: "explore", label: "Districts" });
     }
-    if (data.gallery.length > 0) {
+    if (gallery.length > 0) {
       links.push({ id: "gallery", label: "Gallery" });
     }
-    if (isAcademy && data.facilities.length > 0) {
+    if (isAcademy && facilities.length > 0) {
       links.push({ id: "facilities", label: "Facilities" });
     }
     if (events.length > 0) {
@@ -80,13 +112,14 @@ export function WebsitePreview({
     }
     links.push({ id: "location", label: "Contact" });
     return links;
-  }, [isAcademy, explore.length, data.gallery.length, data.facilities.length, events.length, downloads.length, exp.length]);
+  }, [isAcademy, explore.length, gallery.length, facilities.length, events.length, downloads.length, exp.length]);
 
   const handleNavClick = (sectionId: string) => {
     setMobileMenuOpen(false);
-    const scrollContainer = document.getElementById("pv-scroll-container");
+    const scrollContainer = containerRef.current || document.getElementById("pv-scroll-container");
     const target = document.getElementById(`pv-${sectionId}`);
     if (scrollContainer && target) {
+      isNavigatingRef.current = true;
       const containerRect = scrollContainer.getBoundingClientRect();
       const targetRect = target.getBoundingClientRect();
       const targetScrollTop = targetRect.top - containerRect.top + scrollContainer.scrollTop;
@@ -94,14 +127,38 @@ export function WebsitePreview({
         top: targetScrollTop,
         behavior: "smooth",
       });
+      setTimeout(() => {
+        if (scrollContainer) {
+          scrollPosRef.current = scrollContainer.scrollTop;
+        }
+        isNavigatingRef.current = false;
+      }, 500);
     }
     onNavigateSection?.(sectionId);
   };
 
+  const mapQuery = useMemo(() => {
+    const hasCoords = Boolean(data.location?.latitude && data.location?.longitude);
+    return hasCoords
+      ? `${data.location?.latitude},${data.location?.longitude}`
+      : data.location?.address || "Kerala State Rifle Association, Kochi";
+  }, [data.location?.latitude, data.location?.longitude, data.location?.address]);
+
+  const googleMapsApiKey = (import.meta as any).env?.VITE_GOOGLE_MAPS_API_KEY;
+
+  const mapIframeSrc = useMemo(() => {
+    if (!googleMapsApiKey) return null;
+    return `https://www.google.com/maps/embed/v1/place?key=${googleMapsApiKey}&q=${encodeURIComponent(mapQuery)}`;
+  }, [googleMapsApiKey, mapQuery]);
+
   return (
-    <div className="flex flex-col h-full w-full bg-background text-foreground overflow-hidden select-none">
-      {/* ─── FIXED WEBSITE HEADER (ALWAYS VISIBLE AT TOP) ─── */}
-      <header className="shrink-0 z-20 border-b bg-card/95 backdrop-blur-sm px-4 sm:px-6 py-3 shadow-xs">
+    <div
+      id="pv-scroll-container"
+      ref={containerRef}
+      className="relative h-full w-full overflow-y-auto overflow-x-hidden bg-background text-foreground select-none overscroll-contain"
+    >
+      {/* ─── STICKY WEBSITE NAVBAR INSIDE WEBSITE SCROLL CONTAINER ─── */}
+      <header className="sticky top-0 z-20 border-b bg-card/95 backdrop-blur-sm px-4 sm:px-6 py-3 shadow-xs">
         <div className="flex items-center justify-between gap-3">
           <button
             type="button"
@@ -183,26 +240,19 @@ export function WebsitePreview({
         )}
       </header>
 
-      {/* ─── DEDICATED SCROLLABLE WEBSITE CONTENT AREA (ONLY THIS SCROLLS) ─── */}
-      <div
-        id="pv-scroll-container"
-        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scroll-smooth"
-      >
-        {/* Hero Section */}
-        <section
+      {/* Hero Section */}
+      <section
           id="pv-hero"
-          className={`relative overflow-hidden bg-brand-deep text-brand-foreground ${
-            isMobile ? "h-64 p-5" : isTablet ? "h-72 p-7" : "h-84 p-9"
-          } flex flex-col justify-end`}
+          className={`relative overflow-hidden bg-brand-deep text-brand-foreground ${isMobile ? "h-64 p-5" : isTablet ? "h-72 p-7" : "h-84 p-9"
+            } flex flex-col justify-end`}
         >
-          {images.map((src, i) => (
+          {heroImages.map((src, i) => (
             <img
               key={i}
               src={src}
               alt=""
-              className={`absolute inset-0 size-full object-cover transition-opacity duration-700 ${
-                i === slide % images.length ? "opacity-55" : "opacity-0"
-              }`}
+              className={`absolute inset-0 size-full object-cover transition-opacity duration-700 ${i === slide % heroImages.length ? "opacity-55" : "opacity-0"
+                }`}
             />
           ))}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
@@ -293,7 +343,7 @@ export function WebsitePreview({
         )}
 
         {/* Gallery Section */}
-        {data.gallery.length > 0 && (
+        {gallery.length > 0 && (
           <section
             id="pv-gallery"
             className={`${isMobile ? "p-4" : "p-6 sm:p-8"}`}
@@ -305,7 +355,7 @@ export function WebsitePreview({
               </p>
             </div>
             <div className={`grid ${grid3} gap-3 sm:gap-4`}>
-              {data.gallery.map((g) => (
+              {gallery.map((g) => (
                 <figure
                   key={g.id}
                   className="group overflow-hidden rounded-xl border border-border bg-card shadow-xs"
@@ -334,7 +384,7 @@ export function WebsitePreview({
         )}
 
         {/* Facilities Section (Sub-Academy Only) */}
-        {isAcademy && data.facilities.length > 0 && (
+        {isAcademy && facilities.length > 0 && (
           <section
             id="pv-facilities"
             className={`bg-surface ${isMobile ? "p-4" : "p-6 sm:p-8"}`}
@@ -346,7 +396,7 @@ export function WebsitePreview({
               </p>
             </div>
             <div className={`grid ${grid3} gap-3 sm:gap-4`}>
-              {data.facilities.map((f) => (
+              {facilities.map((f) => (
                 <div
                   key={f.id}
                   className="group relative overflow-hidden rounded-xl border border-border bg-card shadow-xs"
@@ -503,11 +553,10 @@ export function WebsitePreview({
                           {Array.from({ length: 5 }).map((_, i) => (
                             <Star
                               key={i}
-                              className={`size-3 ${
-                                i < x.rating
-                                  ? "fill-warning text-warning"
-                                  : "text-muted-foreground/30"
-                              }`}
+                              className={`size-3 ${i < x.rating
+                                ? "fill-warning text-warning"
+                                : "text-muted-foreground/30"
+                                }`}
                             />
                           ))}
                         </div>
@@ -540,24 +589,24 @@ export function WebsitePreview({
                 <div className="flex items-start gap-2.5 text-xs sm:text-sm">
                   <MapPin className="size-4 shrink-0 text-brand mt-0.5" />
                   <span className="text-foreground leading-relaxed">
-                    {data.location.address || "Address not provided"}
+                    {data.location?.address || "Address not provided"}
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5 text-xs sm:text-sm">
                   <Phone className="size-4 shrink-0 text-brand" />
                   <span className="text-foreground font-medium">
-                    {data.location.contactNumber || "Phone not provided"}
+                    {data.location?.contactNumber || "Phone not provided"}
                   </span>
                 </div>
-                {(data.location.mapUrl || data.location.address) && (
+                {(data.location?.mapUrl || data.location?.address) && (
                   <div className="pt-2">
                     <a
                       href={
-                        data.location.mapUrl && data.location.mapUrl !== "https://maps.google.com"
+                        data.location?.mapUrl && data.location.mapUrl !== "https://maps.google.com"
                           ? data.location.mapUrl
-                          : data.location.latitude && data.location.longitude
+                          : data.location?.latitude && data.location?.longitude
                             ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.location.latitude)},${encodeURIComponent(data.location.longitude)}`
-                            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.location.address || "Kerala State Rifle Association")}`
+                            : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(data.location?.address || "Kerala State Rifle Association")}`
                       }
                       target="_blank"
                       rel="noopener noreferrer"
@@ -595,23 +644,86 @@ export function WebsitePreview({
               </div>
             </div>
 
-            {data.location.mapImage ? (
-              <div className="overflow-hidden rounded-xl border border-border shadow-xs">
-                <img
-                  src={data.location.mapImage}
-                  alt="Map Location"
-                  className="aspect-video w-full max-w-full object-cover"
-                />
+            {/* Interactive Location Map */}
+            <div className="flex flex-col space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="flex size-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Live Location Map
+                  </span>
+                </div>
+                {data.location?.mapImage && (
+                  <div className="flex rounded-md border border-border bg-muted/40 p-0.5 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setMapViewMode("interactive")}
+                      className={`rounded px-2 py-0.5 font-medium transition-colors cursor-pointer ${mapViewMode === "interactive"
+                        ? "bg-card text-foreground shadow-2xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                      Map
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMapViewMode("image")}
+                      className={`rounded px-2 py-0.5 font-medium transition-colors cursor-pointer ${mapViewMode === "image"
+                        ? "bg-card text-foreground shadow-2xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                        }`}
+                    >
+                      Photo
+                    </button>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="aspect-video w-full rounded-xl border border-dashed border-border bg-muted/30 flex flex-col items-center justify-center p-4 text-center">
-                <MapPin className="size-6 text-muted-foreground mb-1" />
-                <span className="text-xs font-medium text-foreground">Interactive Map Area</span>
-                <span className="text-[11px] text-muted-foreground">
-                  {data.location.address ? data.location.address.slice(0, 50) + "..." : "Map preview"}
-                </span>
-              </div>
-            )}
+
+              {data.location?.mapImage && mapViewMode === "image" ? (
+                <div className="overflow-hidden rounded-xl border border-border shadow-xs">
+                  <img
+                    src={data.location.mapImage}
+                    alt="Map Location"
+                    className="aspect-video w-full max-w-full object-cover"
+                  />
+                </div>
+              ) : mapIframeSrc ? (
+                <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                  <iframe
+                    title="Google Maps Embed Location"
+                    width="100%"
+                    height="100%"
+                    loading="lazy"
+                    className="aspect-video w-full border-0 min-h-[220px]"
+                    src={mapIframeSrc}
+                  />
+                  <div className="absolute bottom-2 left-2 flex items-center gap-1.5 rounded-md bg-card/90 px-2 py-1 text-[11px] font-medium text-foreground backdrop-blur-sm shadow-xs border border-border/80">
+                    <Navigation className="size-3 text-brand" />
+                    <span>
+                      {data.location?.latitude && data.location?.longitude
+                        ? `${Number(data.location.latitude).toFixed(4)}, ${Number(data.location.longitude).toFixed(4)}`
+                        : data.location?.address ? data.location.address.slice(0, 25) + "…" : "Kochi, Kerala"}
+                    </span>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative overflow-hidden rounded-xl border border-dashed border-border bg-muted/20 p-5 flex flex-col items-center justify-center text-center aspect-video min-h-[220px]">
+                  <div className="size-9 rounded-full bg-brand-soft text-brand flex items-center justify-center mb-2">
+                    <MapPin className="size-4" />
+                  </div>
+                  <p className="text-xs font-bold text-foreground">
+                    Google Maps API Key Required
+                  </p>
+                  <p className="mt-1 text-[11px] text-muted-foreground max-w-xs leading-relaxed">
+                    Set <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[10px] text-foreground font-semibold">VITE_GOOGLE_MAPS_API_KEY</code> in your <code className="rounded bg-muted px-1 py-0.5 font-mono text-[10px]">.env</code> file to enable the live Google Maps Embed API.
+                  </p>
+                  <div className="mt-2.5 flex items-center gap-1.5 text-[10.5px] text-muted-foreground font-medium bg-card px-2.5 py-1 rounded-md border border-border/70 shadow-2xs">
+                    <Navigation className="size-3 text-brand" />
+                    <span className="truncate max-w-[200px]">Target: {mapQuery}</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -623,23 +735,22 @@ export function WebsitePreview({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <p className="font-display text-lg sm:text-xl font-extrabold uppercase text-white">
-                {data.navbar.shortName || "Academy"}
+                {data.navbar?.shortName || "Academy"}
               </p>
               <p className="mt-1 opacity-80 max-w-sm leading-relaxed">
-                {data.footer.address || data.location.address}
+                {data.footer?.address || data.location?.address}
               </p>
               <p className="mt-1 font-semibold text-white/90">
-                Tel: {data.footer.contactNumber || data.location.contactNumber}
+                Tel: {data.footer?.contactNumber || data.location?.contactNumber}
               </p>
             </div>
             <div className="text-right sm:text-right">
               <p className="text-[11px] opacity-70">
-                © {new Date().getFullYear()} {data.navbar.shortName || "KSRA Academy"}. All rights reserved.
+                © {new Date().getFullYear()} {data.navbar?.shortName || "KSRA Academy"}. All rights reserved.
               </p>
             </div>
           </div>
         </footer>
       </div>
-    </div>
   );
-}
+});

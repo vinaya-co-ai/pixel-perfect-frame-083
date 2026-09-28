@@ -194,8 +194,8 @@ function Builder() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-surface">
-      <header className="sticky top-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-3 shadow-2xs">
+    <div className="h-screen flex flex-col bg-surface overflow-hidden">
+      <header className="shrink-0 z-30 flex flex-wrap items-center justify-between gap-3 border-b bg-card px-5 py-3 shadow-2xs">
         <div className="flex items-center gap-4">
           <span className="font-display text-xl font-extrabold uppercase text-brand-deep">Website Builder</span>
           <div className="flex rounded-lg border p-0.5 bg-muted/30">
@@ -298,8 +298,8 @@ function Builder() {
         </div>
       </header>
 
-      <div className="flex flex-1 flex-col lg:flex-row">
-        <aside className="w-full lg:w-[440px] shrink-0 border-r bg-card p-4">
+      <div className="flex flex-1 flex-col lg:flex-row min-h-0 overflow-hidden">
+        <aside className="w-full lg:w-[440px] shrink-0 border-r bg-card p-4 overflow-y-auto">
           <EditorPanel
             data={data}
             update={update}
@@ -310,9 +310,9 @@ function Builder() {
             onSelectSection={scrollToPreviewSection}
           />
         </aside>
-        <main className="flex min-w-0 flex-1 flex-col bg-muted/20 relative">
+        <main className="flex min-w-0 flex-1 flex-col bg-muted/20 relative min-h-0 overflow-hidden">
           {/* Device Switcher Bar */}
-          <div className="sticky top-[57px] z-20 flex items-center justify-between border-b bg-card px-6 py-2 shadow-2xs">
+          <div className="shrink-0 z-20 flex items-center justify-between border-b bg-card px-6 py-2 shadow-2xs">
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Live Preview
@@ -356,7 +356,7 @@ function Builder() {
           </div>
 
           {/* Preview Viewport Frame */}
-          <div className="flex-1 p-4 sm:p-6 flex justify-center items-start">
+          <div className="flex-1 min-h-0 p-4 sm:p-6 flex justify-center items-center overflow-hidden overscroll-none">
             <div
               className={`flex flex-col transition-all duration-500 mx-auto overflow-hidden bg-card ${
                 previewGlow
@@ -364,10 +364,10 @@ function Builder() {
                   : ""
               } ${
                 device === "mobile"
-                  ? "w-[390px] h-[780px] rounded-3xl border-8 border-border/80 shadow-2xl"
+                  ? "w-[390px] max-w-full h-full max-h-[780px] rounded-3xl border-8 border-border/80 shadow-2xl"
                   : device === "tablet"
-                    ? "w-[768px] h-[880px] rounded-2xl border-4 border-border/80 shadow-xl"
-                    : "w-full max-w-[1120px] min-h-[720px] h-[calc(100vh-140px)] rounded-xl border border-border shadow-md"
+                    ? "w-[768px] max-w-full h-full max-h-[880px] rounded-2xl border-4 border-border/80 shadow-xl"
+                    : "w-full max-w-[1120px] h-full rounded-xl border border-border shadow-md"
               }`}
               style={{
                 width: currentDevice.width,

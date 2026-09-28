@@ -86,8 +86,9 @@ export function EditorPanel({
           id="field-navbar-logoUrl"
           label="Logo"
           required
+          expectedRatio="1:1"
           aspect="aspect-square"
-          hint="PNG or JPEG · 1:1 ratio recommended"
+          hint="Required ratio: 1:1 · PNG or JPEG"
           value={data.navbar.logoUrl}
           onChange={(v) => set("navbar", { ...data.navbar, logoUrl: v })}
           error={data.navbar.logoUrl ? null : "Logo is required"}
@@ -267,7 +268,9 @@ export function EditorPanel({
                     id={`field-explore-${item.id}-logoUrl`}
                     label="Logo"
                     compact
-                    aspect="aspect-square"
+                    expectedRatio="4:3"
+                    aspect="aspect-4/3"
+                    hint="Required ratio: 4:3 · PNG or JPEG"
                     value={item.logoUrl}
                     onChange={(v) => patch({ logoUrl: v })}
                   />
@@ -928,10 +931,6 @@ export function EditorPanel({
         value={openSections}
         onValueChange={(val) => {
           setOpenSections(val);
-          const newlyOpened = val.find((v) => !openSections.includes(v));
-          if (newlyOpened) {
-            onSelectSection?.(newlyOpened);
-          }
         }}
         className="space-y-2.5"
       >
@@ -944,10 +943,7 @@ export function EditorPanel({
               id={`accordion-item-${section.id}`}
               className="overflow-hidden rounded-xl border border-border bg-surface px-0 shadow-sm last:border-b"
             >
-              <AccordionTrigger
-                className="px-3 py-3 hover:no-underline cursor-pointer"
-                onClick={() => onSelectSection?.(section.id)}
-              >
+              <AccordionTrigger className="px-3 py-3 hover:no-underline cursor-pointer">
                 <span className="flex items-center gap-2.5 text-left flex-1 min-w-0">
                   <span className="grid size-6 shrink-0 place-items-center rounded-md bg-brand-soft text-[11px] font-bold text-brand">
                     {i + 1}

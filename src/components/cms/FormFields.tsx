@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { AlertCircle, ArrowDown, ArrowUp, GripVertical, ImagePlus, Trash2, Upload } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
@@ -122,6 +122,7 @@ export function ImageField({
   hint,
   error,
   aspect = "aspect-video",
+  expectedRatio,
   compact,
   id,
 }: {
@@ -132,15 +133,76 @@ export function ImageField({
   hint?: string;
   error?: string | null;
   aspect?: string;
+  expectedRatio?: "1:1" | "4:3";
   compact?: boolean;
   id?: string;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  const pick = (file?: File | null) => {
+  const validateAndPick = (file?: File | null) => {
     if (!file) return;
-    onChange(URL.createObjectURL(file));
+
+    // 1. File type validation (PNG or JPEG only)
+    const validTypes = ["image/png", "image/jpeg", "image/jpg"];
+    const isExtValid = /\.(png|jpe?g)$/i.test(file.name);
+    if (!validTypes.includes(file.type) && !isExtValid) {
+      setLocalError("Only PNG or JPEG images are allowed.");
+      return;
+    }
+
+    // 2. Aspect ratio / dimension validation
+    const objectUrl = URL.createObjectURL(file);
+    if (expectedRatio) {
+      const img = new Image();
+      img.onload = () => {
+        const width = img.naturalWidth;
+        const height = img.naturalHeight;
+        const ratio = width / height;
+
+        if (expectedRatio === "1:1") {
+          // Allow 8% tolerance for minor rounding
+          if (Math.abs(ratio - 1.0) > 0.08) {
+            setLocalError(
+              `Required ratio: 1:1 (square). Your image is ${width}×${height} (ratio ${ratio.toFixed(2)}:1).`,
+            );
+            URL.revokeObjectURL(objectUrl);
+            return;
+          }
+        } else if (expectedRatio === "4:3") {
+          // 4/3 = 1.3333... Allow 8% tolerance
+          if (Math.abs(ratio - 4 / 3) > 0.08) {
+            setLocalError(
+              `Required ratio: 4:3. Your image is ${width}×${height} (ratio ${ratio.toFixed(2)}:1).`,
+            );
+            URL.revokeObjectURL(objectUrl);
+            return;
+          }
+        }
+
+        setLocalError(null);
+        onChange(objectUrl);
+      };
+
+      img.onerror = () => {
+        setLocalError("Could not read image dimensions.");
+        URL.revokeObjectURL(objectUrl);
+      };
+
+      img.src = objectUrl;
+    } else {
+      setLocalError(null);
+      onChange(objectUrl);
+    }
   };
+
+  const displayError = localError || error;
+
+  const defaultHint = expectedRatio
+    ? `Required ratio: ${expectedRatio} · PNG or JPEG`
+    : "PNG or JPEG only";
+
+  const effectiveHint = hint || defaultHint;
 
   const body = (
     <div id={id} className="space-y-2">
@@ -149,7 +211,10 @@ export function ImageField({
         type="file"
         accept="image/png,image/jpeg"
         className="hidden"
-        onChange={(e) => pick(e.target.files?.[0])}
+        onChange={(e) => {
+          validateAndPick(e.target.files?.[0]);
+          e.target.value = "";
+        }}
       />
       {value ? (
         <div className="group relative overflow-hidden rounded-lg border border-border">
@@ -164,7 +229,7 @@ export function ImageField({
               type="button"
               size="sm"
               variant="secondary"
-              className="h-7 flex-1 text-[11px]"
+              className="h-7 flex-1 text-[11px] cursor-pointer"
               onClick={() => inputRef.current?.click()}
             >
               Replace
@@ -173,8 +238,11 @@ export function ImageField({
               type="button"
               size="sm"
               variant="secondary"
-              className="h-7 text-[11px]"
-              onClick={() => onChange("")}
+              className="h-7 text-[11px] cursor-pointer"
+              onClick={() => {
+                setLocalError(null);
+                onChange("");
+              }}
             >
               <Trash2 className="size-3" />
             </Button>
@@ -187,27 +255,41 @@ export function ImageField({
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
-            pick(e.dataTransfer.files?.[0]);
+            validateAndPick(e.dataTransfer.files?.[0]);
           }}
           className={cn(
-            "flex w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-input bg-muted/40 px-3 text-center transition-colors hover:border-brand hover:bg-brand-soft",
-            compact ? "py-4" : "py-7",
-            error && "border-warning/70",
+            "flex w-full flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-input bg-muted/40 px-3 text-center transition-colors hover:border-brand hover:bg-brand-soft cursor-pointer",
+            compact ? "py-3.5" : "py-6",
+            displayError && "border-destructive/70 bg-destructive/5",
           )}
         >
-          <ImagePlus className="size-4 text-muted-foreground" />
+          <ImagePlus className={cn("size-4", displayError ? "text-destructive" : "text-muted-foreground")} />
           <span className="text-[12px] font-medium text-foreground">
             Drop image or click to upload
           </span>
-          <span className="text-[11px] text-muted-foreground">PNG or JPEG</span>
+          <span className="text-[11px] text-muted-foreground">
+            {expectedRatio ? `Ratio ${expectedRatio} · PNG or JPEG` : "PNG or JPEG"}
+          </span>
         </button>
+      )}
+      {displayError && !label && (
+        <p className="flex items-center gap-1 text-[11.5px] text-destructive font-medium">
+          <AlertCircle className="size-3 shrink-0" />
+          <span>{displayError}</span>
+        </p>
       )}
     </div>
   );
 
   if (!label) return body;
   return (
-    <FieldShell label={label} required={required} hint={hint} error={error} id={id ? `${id}-container` : undefined}>
+    <FieldShell
+      label={label}
+      required={required}
+      hint={effectiveHint}
+      error={displayError}
+      id={id ? `${id}-container` : undefined}
+    >
       {body}
     </FieldShell>
   );
